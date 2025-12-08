@@ -279,10 +279,14 @@ class FlappyBirdSimpleEnv(gym.Env):
     # DRAWING
     # ------------------------------------------------------------
     def _draw_scene(self):
-        # Background
-        self.screen.fill((0, 150, 255))  # blue sky
+        # ---------------------------------------------------
+        # BACKGROUND
+        # ---------------------------------------------------
+        self.screen.fill((0, 150, 255))  # Sky blue background
 
-        # Pipes
+        # ---------------------------------------------------
+        # DRAW PIPES
+        # ---------------------------------------------------
         for pipe in self.pipes:
             gap_y = pipe["gap_y"]
             gap_h = pipe["gap_height"]
@@ -296,10 +300,88 @@ class FlappyBirdSimpleEnv(gym.Env):
                 w,
                 self.HEIGHT - (gap_y + gap_h // 2),
             )
+
             pygame.draw.rect(self.screen, (0, 255, 0), top_rect)
             pygame.draw.rect(self.screen, (0, 255, 0), bottom_rect)
 
-        # Bird
+        # ---------------------------------------------------
+        # FIND NEAREST PIPE
+        # ---------------------------------------------------
+        nearest_pipe = None
+        min_dx = float("inf")
+        for pipe in self.pipes:
+            dx = pipe["x"] + pipe["width"] - self.BIRD_X
+            if dx >= 0 and dx < min_dx:
+                min_dx = dx
+                nearest_pipe = pipe
+
+        # ---------------------------------------------------
+        # RAYCAST SYSTEM (Gap, Top, Bottom)
+        # ---------------------------------------------------
+        if nearest_pipe is not None:
+            gap_center_y = nearest_pipe["gap_y"]
+            gap_top = gap_center_y - nearest_pipe["gap_height"] / 2
+            gap_bottom = gap_center_y + nearest_pipe["gap_height"] / 2
+            pipe_x = nearest_pipe["x"]
+
+            bird_pos = (int(self.BIRD_X), int(self.bird_y))
+
+            # 1. Yellow LiDAR → gap center
+            pygame.draw.line(
+                self.screen,
+                (255, 255, 0),
+                bird_pos,
+                (int(pipe_x), int(gap_center_y)),
+                2,
+            )
+            pygame.draw.circle(self.screen, (255, 120, 0),
+                               (int(pipe_x), int(gap_center_y)), 5)
+
+            # 2. Red ray → top pipe edge
+            pygame.draw.line(
+                self.screen,
+                (255, 0, 0),
+                bird_pos,
+                (int(pipe_x), int(gap_top)),
+                2,
+            )
+            pygame.draw.circle(self.screen, (255, 0, 0),
+                               (int(pipe_x), int(gap_top)), 4)
+
+            # 3. Cyan ray → bottom pipe edge
+            pygame.draw.line(
+                self.screen,
+                (0, 200, 255),
+                bird_pos,
+                (int(pipe_x), int(gap_bottom)),
+                2,
+            )
+            pygame.draw.circle(self.screen, (0, 200, 255),
+                               (int(pipe_x), int(gap_bottom)), 4)
+
+            # ---------------------------------------------------
+            # DISTANCE LABELS
+            # ---------------------------------------------------
+            small_font = pygame.font.SysFont(None, 16)
+
+            dist_to_top = gap_top - self.bird_y
+            dist_to_bottom = gap_bottom - self.bird_y
+            dist_to_center = gap_center_y - self.bird_y
+
+            label_top = small_font.render(
+                f"T:{dist_to_top:.0f}", True, (255, 0, 0))
+            label_center = small_font.render(
+                f"C:{dist_to_center:.0f}", True, (255, 255, 0))
+            label_bottom = small_font.render(
+                f"B:{dist_to_bottom:.0f}", True, (0, 200, 255))
+
+            self.screen.blit(label_top, (pipe_x + 6, gap_top - 10))
+            self.screen.blit(label_center, (pipe_x + 6, gap_center_y - 5))
+            self.screen.blit(label_bottom, (pipe_x + 6, gap_bottom))
+
+        # ---------------------------------------------------
+        # DRAW BIRD
+        # ---------------------------------------------------
         pygame.draw.circle(
             self.screen,
             (255, 255, 0),
@@ -307,14 +389,32 @@ class FlappyBirdSimpleEnv(gym.Env):
             self.BIRD_RADIUS,
         )
 
-        # Score
-        score_text = self.font.render(
-            f"Score: {self.score}", True, (255, 255, 255))
-        self.screen.blit(score_text, (10, 10))
+        # ---------------------------------------------------
+        # ENGINEERING MINI HUD
+        # ---------------------------------------------------
+        if nearest_pipe:
+            distance_to_pipe = nearest_pipe["x"] - self.BIRD_X
+            gap_offset = gap_center_y - self.bird_y
+
+            hud_font = pygame.font.SysFont(None, 18)
+
+            hud_lines = [
+                f"S: {self.score}",
+                f"V: {self.bird_vel:.1f}",
+                f"D: {distance_to_pipe:.0f}",
+                f"Off: {gap_offset:.0f}",
+            ]
+
+            y_offset = 6
+            for line in hud_lines:
+                text = hud_font.render(line, True, (255, 255, 255))
+                self.screen.blit(text, (8, y_offset))
+                y_offset += 14
 
     # ------------------------------------------------------------
     # CLOSE
     # ------------------------------------------------------------
+
     def close(self):
         if self.screen is not None:
             pygame.display.quit()
