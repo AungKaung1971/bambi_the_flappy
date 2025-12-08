@@ -6,7 +6,7 @@ from stable_baselines3 import PPO, A2C
 from env.flappy_bird_simple import FlappyBirdSimpleEnv
 
 
-def record_video(model_path: str, output_path: str = "videos/agent.mp4", max_frames: int = 5000):
+def record_video(model_path: str, output_path: str = "videos/agent.mp4", max_frames: int = 50000):
     # Detect algorithm type from filename
     if "ppo" in model_path.lower():
         ModelClass = PPO
@@ -76,3 +76,5 @@ if __name__ == "__main__":
 
 # best model
 # python -m scripts.record_video --model saved_models/flappy_ppo_best/best_model.zip
+
+#
