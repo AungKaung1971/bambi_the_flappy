@@ -11,8 +11,6 @@ __pycache__/
 # Virtual environments
 venv/
 .bambi/
-.bambi_env/
-env/
 .venv/
 
 # Jupyter
