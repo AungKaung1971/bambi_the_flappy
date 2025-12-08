@@ -1,0 +1,66 @@
+# -------------------------
+# Python
+# -------------------------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pkl
+*.zip
+
+# Virtual environments
+venv/
+.bambi/
+.bambi_env/
+env/
+.venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# -------------------------
+# MacOS System Files
+# -------------------------
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Icon?
+Icon?
+
+# Thumbnails
+._*
+
+# -------------------------
+# Project Outputs
+# -------------------------
+saved_models/
+logs/
+videos/
+
+# Do NOT ignore the folders themselves — only contents
+!saved_models/.gitkeep
+!logs/.gitkeep
+!videos/.gitkeep
+
+# -------------------------
+# VS Code
+# -------------------------
+.vscode/
+
+# -------------------------
+# Dependencies
+# -------------------------
+*.egg-info/
+dist/
+build/
+
+# -------------------------
+# Imageio cache
+# -------------------------
+imageio_cache/
+
+# -------------------------
+# Checkpoint files
+# -------------------------
+*.npz

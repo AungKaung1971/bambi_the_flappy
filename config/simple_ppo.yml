@@ -1,0 +1,15 @@
+type: simple
+hyperparameters:
+  algorithm: PPO
+  policy: MlpPolicy
+  learning_rate: 0.0003
+  gamma: 0.99
+  n_steps: 2048
+  batch_size: 64
+  ent_coef: 0.0
+
+total_timesteps: 500000
+eval_freq: 10000
+
+checkpoints:
+  prefix: flappy_ppo
