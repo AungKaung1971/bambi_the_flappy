@@ -13,3 +13,8 @@ eval_freq: 10000
 
 checkpoints:
   prefix: flappy_ppo
+
+reward:
+  survival: 1.0
+  pipe: 10.0
+  death: -100.0

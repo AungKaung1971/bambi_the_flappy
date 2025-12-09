@@ -24,9 +24,6 @@ class FlappyBirdSimpleEnv(gym.Env):
     def __init__(self, render_mode=None):
         super().__init__()
 
-        # -----------------------
-        # BASIC CONFIG
-        # -----------------------
         self.WIDTH = 640
         self.HEIGHT = 360
         self.FPS = 60
@@ -82,9 +79,6 @@ class FlappyBirdSimpleEnv(gym.Env):
             low=low, high=high, dtype=np.float32)
         self.action_space = spaces.Discrete(2)
 
-    # ------------------------------------------------------------
-    # RESET
-    # ------------------------------------------------------------
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
 
@@ -117,9 +111,6 @@ class FlappyBirdSimpleEnv(gym.Env):
         info = {}
         return obs, info
 
-    # ------------------------------------------------------------
-    # STEP
-    # ------------------------------------------------------------
     def step(self, action):
         assert self.action_space.contains(action), f"Invalid action {action}"
 
@@ -188,9 +179,6 @@ class FlappyBirdSimpleEnv(gym.Env):
 
         return obs, reward, terminated, truncated, {}
 
-    # ------------------------------------------------------------
-    # OBSERVATION
-    # ------------------------------------------------------------
     def _get_obs(self):
         # Find the nearest pipe in front of the bird
         nearest_pipe = None
@@ -202,7 +190,6 @@ class FlappyBirdSimpleEnv(gym.Env):
                 nearest_pipe = pipe
 
         if nearest_pipe is None:
-            # Fallback: create a dummy pipe ahead
             gap_y = self.HEIGHT / 2.0
             nearest_pipe = {
                 "x": self.BIRD_X + 200.0,
@@ -227,9 +214,6 @@ class FlappyBirdSimpleEnv(gym.Env):
             dtype=np.float32,
         )
 
-    # ------------------------------------------------------------
-    # COLLISION
-    # ------------------------------------------------------------
     def _check_collision(self, pipe):
         # Horizontal overlap
         if self.BIRD_X + self.BIRD_RADIUS > pipe["x"] and \
@@ -245,9 +229,6 @@ class FlappyBirdSimpleEnv(gym.Env):
 
         return False
 
-    # ------------------------------------------------------------
-    # PYGAME INITIALIZATION
-    # ------------------------------------------------------------
     def _init_pygame_display(self):
         pygame.init()
         self.screen = pygame.display.set_mode((self.WIDTH, self.HEIGHT))
@@ -261,9 +242,6 @@ class FlappyBirdSimpleEnv(gym.Env):
         self.clock = pygame.time.Clock()
         self.font = pygame.font.SysFont(None, 32)
 
-    # ------------------------------------------------------------
-    # RENDER MODES
-    # ------------------------------------------------------------
     def _render_human(self):
         pygame.event.pump()
         self._draw_scene()
@@ -275,18 +253,10 @@ class FlappyBirdSimpleEnv(gym.Env):
         frame = pygame.surfarray.array3d(self.screen).swapaxes(0, 1)
         return frame
 
-    # ------------------------------------------------------------
-    # DRAWING
-    # ------------------------------------------------------------
     def _draw_scene(self):
-        # ---------------------------------------------------
-        # BACKGROUND
-        # ---------------------------------------------------
+
         self.screen.fill((0, 150, 255))  # Sky blue background
 
-        # ---------------------------------------------------
-        # DRAW PIPES
-        # ---------------------------------------------------
         for pipe in self.pipes:
             gap_y = pipe["gap_y"]
             gap_h = pipe["gap_height"]
@@ -304,9 +274,6 @@ class FlappyBirdSimpleEnv(gym.Env):
             pygame.draw.rect(self.screen, (0, 255, 0), top_rect)
             pygame.draw.rect(self.screen, (0, 255, 0), bottom_rect)
 
-        # ---------------------------------------------------
-        # FIND NEAREST PIPE
-        # ---------------------------------------------------
         nearest_pipe = None
         min_dx = float("inf")
         for pipe in self.pipes:
@@ -315,9 +282,6 @@ class FlappyBirdSimpleEnv(gym.Env):
                 min_dx = dx
                 nearest_pipe = pipe
 
-        # ---------------------------------------------------
-        # RAYCAST SYSTEM (Gap, Top, Bottom)
-        # ---------------------------------------------------
         if nearest_pipe is not None:
             gap_center_y = nearest_pipe["gap_y"]
             gap_top = gap_center_y - nearest_pipe["gap_height"] / 2
@@ -326,7 +290,6 @@ class FlappyBirdSimpleEnv(gym.Env):
 
             bird_pos = (int(self.BIRD_X), int(self.bird_y))
 
-            # 1. Yellow LiDAR → gap center
             pygame.draw.line(
                 self.screen,
                 (255, 255, 0),
@@ -337,7 +300,6 @@ class FlappyBirdSimpleEnv(gym.Env):
             pygame.draw.circle(self.screen, (255, 120, 0),
                                (int(pipe_x), int(gap_center_y)), 5)
 
-            # 2. Red ray → top pipe edge
             pygame.draw.line(
                 self.screen,
                 (255, 0, 0),
@@ -348,7 +310,6 @@ class FlappyBirdSimpleEnv(gym.Env):
             pygame.draw.circle(self.screen, (255, 0, 0),
                                (int(pipe_x), int(gap_top)), 4)
 
-            # 3. Cyan ray → bottom pipe edge
             pygame.draw.line(
                 self.screen,
                 (0, 200, 255),
@@ -359,9 +320,6 @@ class FlappyBirdSimpleEnv(gym.Env):
             pygame.draw.circle(self.screen, (0, 200, 255),
                                (int(pipe_x), int(gap_bottom)), 4)
 
-            # ---------------------------------------------------
-            # DISTANCE LABELS
-            # ---------------------------------------------------
             small_font = pygame.font.SysFont(None, 16)
 
             dist_to_top = gap_top - self.bird_y
@@ -379,9 +337,6 @@ class FlappyBirdSimpleEnv(gym.Env):
             self.screen.blit(label_center, (pipe_x + 6, gap_center_y - 5))
             self.screen.blit(label_bottom, (pipe_x + 6, gap_bottom))
 
-        # ---------------------------------------------------
-        # DRAW BIRD
-        # ---------------------------------------------------
         pygame.draw.circle(
             self.screen,
             (255, 255, 0),
@@ -389,9 +344,6 @@ class FlappyBirdSimpleEnv(gym.Env):
             self.BIRD_RADIUS,
         )
 
-        # ---------------------------------------------------
-        # ENGINEERING MINI HUD
-        # ---------------------------------------------------
         if nearest_pipe:
             distance_to_pipe = nearest_pipe["x"] - self.BIRD_X
             gap_offset = gap_center_y - self.bird_y
@@ -411,10 +363,6 @@ class FlappyBirdSimpleEnv(gym.Env):
                 self.screen.blit(text, (8, y_offset))
                 y_offset += 14
 
-    # ------------------------------------------------------------
-    # CLOSE
-    # ------------------------------------------------------------
-
     def close(self):
         if self.screen is not None:
             pygame.display.quit()
@@ -422,13 +370,11 @@ class FlappyBirdSimpleEnv(gym.Env):
             self.screen = None
 
 
-# Optional quick manual test (no RL, just gravity)
 if __name__ == "__main__":
     env = FlappyBirdSimpleEnv(render_mode="human")
     obs, info = env.reset()
     done = False
     while True:
-        # Always "do nothing" so you can see the base motion
         obs, reward, terminated, truncated, info = env.step(0)
         if terminated:
             obs, info = env.reset()

@@ -6,14 +6,11 @@ obs, info = env.reset()
 
 running = True
 while running:
-    # Take no action
     obs, reward, terminated, truncated, info = env.step(0)
 
-    # If episode ends, reset
     if terminated:
         obs, info = env.reset()
 
-    # Keep pygame window alive
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
