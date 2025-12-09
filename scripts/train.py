@@ -3,7 +3,6 @@ import argparse
 from typing import Any, Dict
 import time
 
-import gymnasium as gym  # for typing only
 import yaml
 import numpy as np
 
@@ -16,19 +15,17 @@ from env.flappy_bird_simple import FlappyBirdSimpleEnv
 from torch.utils.tensorboard import SummaryWriter
 
 
-# ---------------------------------------------------------------------
-# LOG HYPERPARAMETERS INTO TENSORBOARD (TABLE + SCALARS)
-# ---------------------------------------------------------------------
 def log_hyperparams(writer: SummaryWriter, params: Dict[str, Any]):
-    """Logs hyperparameters cleanly into TensorBoard."""
-    # Table-style log
-    table = "Hyperparameters Used:\n-------------------\n"
+    """Logs hyperparameters into TensorBoard, including table + scalars."""
+
+    # Pretty table for TensorBoard
+    table = "Hyperparameters\n----------------\n"
     for k, v in params.items():
         table += f"{k}: {v}\n"
 
     writer.add_text("hyperparams_table", f"```\n{table}\n```", 0)
 
-    # Also log individual scalars
+    # Individual scalars / texts
     for key, value in params.items():
         if isinstance(value, (int, float)):
             writer.add_scalar(f"hyperparams/{key}", value, 0)
@@ -36,19 +33,13 @@ def log_hyperparams(writer: SummaryWriter, params: Dict[str, Any]):
             writer.add_text(f"hyperparams/{key}", str(value), 0)
 
 
-# ---------------------------------------------------------------------
-# CONFIG LOADING
-# ---------------------------------------------------------------------
 def load_config(path: str) -> Dict[str, Any]:
     with open(path, "r") as f:
         return yaml.safe_load(f)
 
 
-# ---------------------------------------------------------------------
-# ENV FACTORY (MAC-SAFE)
-# ---------------------------------------------------------------------
 def make_env(seed: int | None = None, render_mode: str | None = None):
-    """Creates env wrapped with Monitor, safe for DummyVecEnv."""
+    """Creates FlappyBirdSimpleEnv wrapped with Monitor (safe on Mac)."""
 
     def _init():
         env = FlappyBirdSimpleEnv(render_mode=render_mode)
@@ -59,17 +50,9 @@ def make_env(seed: int | None = None, render_mode: str | None = None):
     return _init
 
 
-# ---------------------------------------------------------------------
-# MODEL FACTORY
-# ---------------------------------------------------------------------
-def make_model(
-    algorithm: str,
-    policy: str,
-    env: DummyVecEnv,
-    hyperparams: Dict[str, Any],
-    tensorboard_log: str,
-):
-    """Creates PPO or A2C from config."""
+def make_model(algorithm: str, policy: str, env: DummyVecEnv,
+               hyperparams: Dict[str, Any], tensorboard_log: str):
+
     algo = algorithm.upper()
 
     kwargs = dict(
@@ -80,12 +63,11 @@ def make_model(
         device="cpu",  # Mac-safe
     )
 
-    # Clean hyperparameters (remove non-SB3 keys)
-    h = hyperparams.copy()
-    h.pop("algorithm", None)
-    h.pop("policy", None)
+    hp = hyperparams.copy()
+    hp.pop("algorithm", None)
+    hp.pop("policy", None)
 
-    kwargs.update(h)
+    kwargs.update(hp)
 
     if algo == "PPO":
         return PPO(**kwargs)
@@ -95,55 +77,54 @@ def make_model(
         raise ValueError(f"Unsupported algorithm: {algorithm}")
 
 
-# ---------------------------------------------------------------------
-# TRAINING LOOP
-# ---------------------------------------------------------------------
-def train(config_path: str, seed: int | None = 42, total_timesteps_override: int | None = None):
-    # Load config
+def train(config_path: str, seed: int | None = 42,
+          total_timesteps_override: int | None = None):
+
+    # Load YAML config
     config = load_config(config_path)
 
-    # Extract hyperparams
-    h = config.get("hyperparameters", config.get("hyperparameter", {}))
+    # Standard hyperparams
+    h = config.get("hyperparameters", {})
     algorithm = h.get("algorithm", "PPO")
     policy = h.get("policy", "MlpPolicy")
+
+    # Reward structure from config (new)
+    reward_cfg = config.get("reward", {})
+
+    # Merge into one dict for TensorBoard
+    full_hyperparams = {
+        **h,
+        **{f"reward_{k}": v for k, v in reward_cfg.items()}
+    }
 
     total_timesteps = total_timesteps_override or config.get(
         "total_timesteps", 500_000)
     eval_freq = config.get("eval_freq", 10_000)
 
-    ckpt_cfg = config.get("checkpoints", {})
-    ckpt_prefix = ckpt_cfg.get("prefix", f"flappy_{algorithm.lower()}")
+    ckpt_prefix = config.get("checkpoints", {}).get(
+        "prefix", f"flappy_{algorithm.lower()}"
+    )
 
-    # Create folders
+    # Ensure folders exist
     os.makedirs("saved_models", exist_ok=True)
     os.makedirs("logs", exist_ok=True)
 
-    # Set seed
+    # Seed
     if seed is not None:
         np.random.seed(seed)
 
-    # ------------------------------------------------------------------
-    # UNIQUE RUN NAME FOR TENSORBOARD
-    # ------------------------------------------------------------------
     timestamp = time.strftime("%Y%m%d-%H%M%S")
     run_name = f"{ckpt_prefix}_run_{timestamp}"
     log_dir = os.path.join("logs", run_name)
     os.makedirs(log_dir, exist_ok=True)
 
-    # TensorBoard writer (for hyperparams)
+    # TensorBoard writer
     writer = SummaryWriter(log_dir)
-    log_hyperparams(writer, h)
+    log_hyperparams(writer, full_hyperparams)
 
-    # ------------------------------------------------------------------
-    # ENVIRONMENTS
-    # ------------------------------------------------------------------
-    train_env = DummyVecEnv([make_env(seed=seed, render_mode=None)])
-    eval_env = DummyVecEnv(
-        [make_env(seed=(seed + 1) if seed else None, render_mode=None)])
+    train_env = DummyVecEnv([make_env(seed=seed)])
+    eval_env = DummyVecEnv([make_env(seed=(seed + 1) if seed else None)])
 
-    # ------------------------------------------------------------------
-    # MODEL
-    # ------------------------------------------------------------------
     model = make_model(
         algorithm=algorithm,
         policy=policy,
@@ -152,26 +133,19 @@ def train(config_path: str, seed: int | None = 42, total_timesteps_override: int
         tensorboard_log=log_dir,
     )
 
-    # ------------------------------------------------------------------
-    # CALLBACKS
-    # ------------------------------------------------------------------
     callbacks = []
 
-    # Eval callback
     callbacks.append(
         EvalCallback(
             eval_env,
-            best_model_save_path=os.path.join(
-                "saved_models", f"{ckpt_prefix}_best"),
+            best_model_save_path=f"saved_models/{ckpt_prefix}_best",
             log_path=log_dir,
             eval_freq=eval_freq,
             n_eval_episodes=5,
             deterministic=True,
-            render=False,
         )
     )
 
-    # Checkpoint callback
     callbacks.append(
         CheckpointCallback(
             save_freq=eval_freq,
@@ -182,30 +156,21 @@ def train(config_path: str, seed: int | None = 42, total_timesteps_override: int
 
     callback_list = CallbackList(callbacks)
 
-    # ------------------------------------------------------------------
-    # TRAIN
-    # ------------------------------------------------------------------
-    print(
-        f"🚀 Starting training ({algorithm}) for {total_timesteps} timesteps...")
+    print(f"🚀 Training {algorithm} for {total_timesteps} timesteps...")
     model.learn(total_timesteps=total_timesteps, callback=callback_list)
     writer.close()
 
-    # ------------------------------------------------------------------
-    # SAVE FINAL MODEL
-    # ------------------------------------------------------------------
-    final_path = os.path.join("saved_models", f"{ckpt_prefix}_final")
+    # Save final model
+    final_path = f"saved_models/{ckpt_prefix}_final"
     model.save(final_path)
 
-    print(f"🎉 Training finished! Final model saved to: {final_path}")
-    print(f"📊 TensorBoard logs saved to: {log_dir}")
+    print(f"🎉 Training finished. Final model saved to {final_path}")
+    print(f"📊 Run logs saved to {log_dir}")
 
 
-# ---------------------------------------------------------------------
-# CLI
-# ---------------------------------------------------------------------
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Train PPO/A2C agent on FlappyBirdSimpleEnv.")
+        description="Train PPO/A2C on FlappyBirdSimpleEnv.")
     parser.add_argument("--config", type=str, default="config/simple_ppo.yml")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--total-timesteps", type=int, default=None)
