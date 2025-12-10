@@ -15,6 +15,6 @@ checkpoints:
   prefix: flappy_ppo
 
 reward:
-  survival: 1.0
-  pipe: 10.0
-  death: -100.0
+  survival: 1
+  pipe: 10
+  death: -100
