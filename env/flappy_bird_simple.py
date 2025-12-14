@@ -35,7 +35,7 @@ class FlappyBirdSimpleEnv(gym.Env):
         self.BIRD_X = 50.0
 
         self.PIPE_WIDTH = 50
-        self.PIPE_GAP_HEIGHT = 120
+        self.PIPE_GAP_HEIGHT = 150
         self.PIPE_SPEED = 2.0
         self.PIPE_INTERVAL = 100  # frames between spawns
 

@@ -2,11 +2,11 @@ type: simple
 hyperparameters:
   algorithm: PPO
   policy: MlpPolicy
-  learning_rate: 0.0001
+  learning_rate: 0.0003
   gamma: 0.99
-  n_steps: 4096
-  batch_size: 256
-  ent_coef: 0.01
+  n_steps: 2048
+  batch_size: 64
+  ent_coef: 0.0
 
 total_timesteps: 500000
 eval_freq: 10000
@@ -18,3 +18,5 @@ reward:
   survival: 1
   pipe: 10
   death: -100
+  align_weight: -0.005
+  
