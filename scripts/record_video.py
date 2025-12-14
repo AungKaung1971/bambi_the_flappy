@@ -63,7 +63,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--max-frames",
         type=int,
-        default=5000,
+        default=50000,
         help="Maximum number of frames to record.",
     )
 
