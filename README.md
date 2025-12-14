@@ -1,242 +1,229 @@
-🐦 Bambi the Flappy — Reinforcement Learning Agent
+Bambi the Flappy — Reinforcement Learning Agent
 ==================================================
 
 Overview
 --------
 
-**Bambi the Flappy** is a reinforcement learning project where a custom-built PPO (Proximal Policy Optimization) agent learns to master a Flappy Bird–style game — from scratch.
+**Bambi the Flappy** is a custom-built reinforcement learning project in which a PPO (Proximal Policy Optimization) agent learns to play a Flappy Bird–style game from scratch.
 
-This project integrates:
+The project combines:
 
-*   A **Gymnasium-compatible environment** built in **Pygame**
+*   A **Gymnasium-compatible environment** built in Pygame
     
-*   **Policy-gradient RL** via **Stable-Baselines3**
+*   **Policy-gradient reinforcement learning** using Stable-Baselines3
     
-*   **Config-driven training pipelines** for reproducible experimentation
+*   A **config-driven training pipeline** with reproducible experiments
     
-*   **TensorBoard** logging for metrics and hyperparameters
+*   **TensorBoard-based logging** for performance, rewards, and hyperparameters
     
 *   A **visualized inference mode** with raycasts and HUD overlays
     
 
-The goal is not to merely clone Flappy Bird, but to investigate how **reward shaping**, **environment design**, and **PPO hyperparameters** impact agent behavior.
+The goal is not just to recreate Flappy Bird, but to **study how reward shaping, environment design, and PPO hyperparameters influence agent behaviour**.
 
-🧠 Key Features
----------------
+Key Features
+------------
 
-*   ✅ Custom Flappy Bird environment (Gymnasium + Pygame)
+*   Custom Flappy Bird environment (Gymnasium + Pygame)
     
-*   ✅ PPO agent via Stable-Baselines3
+*   PPO agent trained with Stable-Baselines3
     
-*   ✅ YAML-based reward configuration
+*   Configurable reward structure via YAML
     
-*   ✅ Deterministic evaluation & checkpointing
+*   Deterministic evaluation & best-model checkpointing
     
-*   ✅ Training visualization via TensorBoard
+*   TensorBoard logging (metrics + hyperparameters)
     
-*   ✅ Gameplay recording to MP4
+*   Gameplay recording to MP4
     
-*   ✅ In-game HUD with real-time raycasts and debug info
-    
-
-📁 Table of Contents
---------------------
-
-*   Installation
-    
-*   Environment Design
-    
-*   Reward Function
-    
-*   Training Setup
-    
-*   Results & Metrics
-    
-*   Visualization & Debugging
-    
-*   How to Run
-    
-*   Project Structure
-    
-*   Design Decisions
-    
-*   Limitations
-    
-*   Future Work
-    
-*   Why This Project Matters
-    
-*   License
+*   Engineering-style HUD with raycasts and state visualization
     
 
-🔧 Installation
----------------
+Environment Design
+------------------
 
-**Requirements:**
+### Observation Space
 
-*   Python ≥ 3.8
+The agent observes a **low-dimensional state vector**:
+
+```python
+state = [
+    bird_y,
+    bird_velocity,
+    distance_to_next_pipe,
+    gap_top_y,
+    gap_bottom_y
+]
+```
+
+This design forces the agent to learn **control and timing**, rather than memorizing pixels.
+
+### Action Space
+
+Discrete:
+
+*   0 — do nothing
     
-*   pygame
-    
-*   gymnasium
-    
-*   stable-baselines3
-    
-*   tensorboard
-    
-*   opencv-python
-    
-*   PyYAML
-    
-
-Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   pip install -r requirements.txt   `
-
-> ℹ️ Mac users: The entire pipeline is CPU-safe and does **not** require a GPU.
-
-🎮 Environment Design
----------------------
-
-### **Observation Space**
-
-A 5-dimensional state vector:
-
-Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   [    bird_y,    bird_velocity,    distance_to_next_pipe,    gap_top_y,    gap_bottom_y  ]   `
-
-### **Action Space**
-
-*   0: Do nothing
-    
-*   1: Flap
+*   1 — flap
     
 
-### **Episode Termination**
+### Episode Termination
 
 An episode ends when:
 
-*   The bird hits a pipe
+*   The bird collides with a pipe
     
-*   The bird flies off-screen vertically
+*   The bird exits the vertical bounds of the screen
     
 
-🎯 Reward Function
-------------------
+Reward Function
+---------------
 
-The reward structure is **YAML-configurable** and promotes:
+The reward function is **explicitly configurable** via YAML and was iteratively tuned during development.
+
+Typical components include:
+
+*   **Survival reward** (per timestep)
+    
+*   **Pipe-passing bonus**
+    
+*   **Terminal penalty on death**
+    
+
+Example (configurable):
+
+```python
+reward = {
+    "survival": 1.0,
+    "pipe": 10.0,
+    "death": -100.0
+}
+```
+
+This setup encourages:
 
 *   Long-term survival
     
 *   Clean pipe traversal
     
-*   Risk-averse decision-making
+*   Avoidance of reckless behaviour
     
 
-### **Sample Reward Config:**
-
-Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   reward:    survival: 1.0    pipe: 10.0    death: -100.0   `
-
-This balance was tuned iteratively to stabilize learning.
-
-🏋️ Training Setup
-------------------
+Training Setup
+--------------
 
 *   **Algorithm:** PPO (Proximal Policy Optimization)
     
-*   **Policy:** MLP (Fully Connected)
+*   **Policy:** MLP (fully connected)
     
-*   **Library:** Stable-Baselines3
+*   **Framework:** Stable-Baselines3
     
-*   **Timesteps:** Up to 500,000 per run
+*   **Training Duration:** up to 500,000 timesteps per run
     
-*   **Hardware:** CPU-only
+*   **Evaluation:** Periodic deterministic rollouts
     
-*   **Evaluation:** Deterministic rollouts with checkpointing
-    
-*   **Logging:** TensorBoard (metrics + hyperparameters)
+*   **Hardware:** CPU-only (Mac-safe)
     
 
-📊 Results & Metrics
---------------------
+All hyperparameters and rewards are logged per run.
+
+Results & Metrics
+-----------------
+
+> _Metrics below are representative — exact values depend on configuration._
 
 Tracked during training:
 
-*   Mean episode reward
-    
 *   Mean episode length
+    
+*   Mean episode reward
     
 *   Pipes passed per episode
     
-*   Best checkpoint performance
+*   Best model checkpoint performance
     
 
-> The trained agent can survive hundreds of pipes in a stable, fixed-difficulty setup.
+The trained agent is capable of surviving **hundreds of pipes** in a fixed-difficulty environment.
 
-📈 _(Include TensorBoard screenshots or links here)_🎥 _(Link to gameplay recordings in /videos)_
+_(TensorBoard plots and gameplay videos should be linked here)_
 
-🧪 Visualization & Debugging
-----------------------------
+Visualization & Debugging
+-------------------------
 
-During inference, the game renders:
+During inference and recording, the environment renders:
 
-*   Raycasts from the bird to the pipe gap (top / center / bottom)
+*   Raycasts from bird → pipe gap (top / center / bottom)
     
-*   Velocity, alignment, and distance overlays
+*   Distance labels
     
-*   Real-time score HUD
+*   Velocity and alignment HUD
     
-
-This transforms the agent from a black box into an **explainable** decision system.
-
-▶️ How to Run
--------------
-
-### **Train the Agent**
-
-Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   python scripts/train.py --config config/simple_ppo.yml   `
-
-### **View Training Metrics**
-
-Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   tensorboard --logdir logs   `
-
-### **Record Gameplay**
-
-Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   python scripts/record_video.py \    --model saved_models/flappy_ppo_best/best_model.zip   `
-
-🗂️ Project Structure
----------------------
-
-Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   bambi_the_flappy/  ├── env/                # Custom Gymnasium environment  ├── scripts/            # Training, evaluation, recording  ├── config/             # YAML configs (hyperparams & rewards)  ├── logs/               # TensorBoard logs  ├── saved_models/       # Trained checkpoints  └── videos/             # Recorded gameplay videos   `
-
-🧠 Design Decisions
--------------------
-
-### Why PPO?
-
-Stable on-policy algorithm, ideal for sparse rewards and continuous control.
-
-### Why MLP (not CNN)?
-
-The low-dimensional input is structured; no need for image-based learning.
-
-### Why Custom Rewards?
-
-Pure survival leads to erratic behavior. Shaped rewards accelerate convergence and stabilize training.
-
-⚠️ Limitations
---------------
-
-*   No dynamic difficulty (pipes & gaps are fixed)
-    
-*   No domain randomization (deterministic physics)
-    
-*   No vision-based agent (MLP only, not CNN)
+*   Real-time score tracking
     
 
-> These are **intentional** to focus purely on learning dynamics and PPO behavior.
+This makes the agent’s decision-making **observable and explainable**, rather than a black box.
 
-🚀 Future Work
---------------
+How to Run
+----------
 
-*   Dynamic difficulty adjustment
+### Train the Agent
+
+```bash
+python scripts/train.py --config config/simple_ppo.yml
+```
+
+### View Training Metrics
+
+```bash
+tensorboard --logdir logs
+```
+
+### Record Gameplay
+
+```bash
+python scripts/record_video.py \
+    --model saved_models/flappy_ppo_best/best_model.zip
+```
+
+Project Structure
+-----------------
+
+```text
+bambi_the_flappy/
+├── env/                # Custom Gymnasium environment
+├── scripts/            # Training, evaluation, recording
+├── config/             # YAML configs (hyperparams & rewards)
+├── logs/               # TensorBoard runs
+├── saved_models/       # Checkpoints & best models
+└── videos/             # Recorded gameplay
+```
+
+Design Decisions
+----------------
+
+*   **Why PPO?** Stable, on-policy algorithm well-suited for continuous control and sparse rewards.
+    
+*   **Why not CNNs?** Low-dimensional state representation allows faster learning and interpretability.
+    
+*   **Why custom reward shaping?** Raw survival alone leads to unstable policies; shaping accelerates convergence.
+    
+
+Limitations
+-----------
+
+*   No difficulty scaling (fixed pipe speed & gap)
+    
+*   Deterministic physics (no domain randomization)
+    
+*   MLP-only policy (no vision-based agent)
+    
+
+These are deliberate to isolate learning dynamics.
+
+Future Work
+-----------
+
+*   Dynamic difficulty scaling
     
 *   Gap-alignment reward shaping
     
@@ -247,21 +234,16 @@ Pure survival leads to erratic behavior. Shaped rewards accelerate convergence a
 *   Domain randomization for robustness
     
 
-💡 Why This Project Matters
----------------------------
+Why This Project Matters
+------------------------
 
-This is not a tutorial clone — it’s an **engineering experiment** in end-to-end reinforcement learning. It demonstrates:
+This project demonstrates:
 
-*   Modular RL system design
+*   End-to-end RL system design
     
-*   Experimental reproducibility with config-driven runs
+*   Experimental rigor (configs, metrics, reproducibility)
     
-*   Real-time explainability and agent visualization
+*   Practical debugging and visualization
     
-*   Clean separation of agent, environment, and training logic
+*   Clear separation between **environment**, **agent**, and **training logic**
     
-
-📜 License
-----------
-
-MIT License. See LICENSE file for details.
